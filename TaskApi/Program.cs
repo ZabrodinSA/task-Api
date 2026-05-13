@@ -1,3 +1,8 @@
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using TaskApi.Controllers;
+using TaskApi.Services.Validators;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -5,6 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 builder.Services.AddControllersWithViews();
+
+//Validator services
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddScoped<IValidator<TasksController.PostTaskTdo>, VerifyPostTaskDtoValidator>();
 
 var app = builder.Build();
 

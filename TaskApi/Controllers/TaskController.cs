@@ -13,9 +13,9 @@ public class TasksController : Controller
     }
     
     [HttpPost]
-    public IActionResult Post([FromBody] PostTdo tdo)
+    public IActionResult Post([FromBody] PostTaskTdo taskTdo)
     {
-        return Ok("Task created! title: " + tdo.Title + ", priority: " + tdo.Priority );
+        return Ok("Task created! title: " + taskTdo.Title + ", priority: " + taskTdo.Priority );
     }
     
     [HttpPut("{id}/complete")]
@@ -30,5 +30,5 @@ public class TasksController : Controller
         return Ok($"Task {id} deleted!");
     }
 
-    public record PostTdo(string Title, int Priority);
+    public record PostTaskTdo(string Title, int Priority);
 }
