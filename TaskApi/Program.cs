@@ -31,6 +31,15 @@ var app = builder.Build();
 var rabbitMqService = app.Services.GetRequiredService<RabbitMqService>();
 await rabbitMqService.InitializeAsync();
 
+var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+
+appLifetime.ApplicationStopping.Register(async () =>
+{
+    Console.WriteLine("Application is stopping...");
+    await rabbitMqService.DisposeAsync();
+    Console.WriteLine("RabbitMQ resources disposed.");
+});
+
 app.UseHttpsRedirection();
 
 app.UseRouting();

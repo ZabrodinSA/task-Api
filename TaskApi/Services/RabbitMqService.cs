@@ -10,6 +10,10 @@ public class RabbitMqService : IAsyncDisposable
 {
     private IConnection? _connection;
     private IChannel? _channel;
+    
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private int _activePublications = 0;
+    private bool _disposed = false;
 
     public async Task InitializeAsync()
     {
@@ -40,8 +44,12 @@ public class RabbitMqService : IAsyncDisposable
 
     public async Task PublishTaskCompletedAsync(TaskModel message)
     {
+        Interlocked.Increment(ref _activePublications);
+
         try
         {
+            await _semaphore.WaitAsync();
+
             var payload = new
             {
                 taskId = message.Id,
@@ -50,15 +58,16 @@ public class RabbitMqService : IAsyncDisposable
                 priority = message.Priority.ToString()
 
             };
-            
+
             var json = JsonSerializer.Serialize(payload);
             var body = Encoding.UTF8.GetBytes(json);
-            
-            await _channel.BasicPublishAsync(
-                exchange: "task.events",
-                routingKey: "task.completed",
-                body: body
-            );
+
+            if (_channel != null)
+                await _channel.BasicPublishAsync(
+                    exchange: "task.events",
+                    routingKey: "task.completed",
+                    body: body
+                );
         }
         catch (BrokerUnreachableException ex)
         {
@@ -68,10 +77,26 @@ public class RabbitMqService : IAsyncDisposable
         {
             await Console.Error.WriteLineAsync($"Error publishing message:  {ex.Message}");
         }
+        finally
+        {
+            _semaphore.Release();
+            Interlocked.Decrement(ref _activePublications);
+        }
     }
 
     public async ValueTask DisposeAsync()
     {
+        if (_disposed) return; 
+        _disposed = true;
+        
+        var timeout = TimeSpan.FromSeconds(5);
+        var start = DateTime.UtcNow;
+        
+        while (_activePublications > 0 && DateTime.UtcNow - start < timeout)
+        {
+            await Task.Delay(100); 
+        }
+        
         if (_channel != null)
         {
             await _channel.CloseAsync();
