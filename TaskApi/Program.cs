@@ -2,6 +2,8 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using TaskApi.Controllers;
 using TaskApi.Services.Validators;
+using Microsoft.EntityFrameworkCore;
+using TaskApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +16,11 @@ builder.Services.AddControllersWithViews();
 //Validator services
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddScoped<IValidator<TasksController.PostTaskTdo>, VerifyPostTaskDtoValidator>();
+
+//Add DB contexts
+builder.Services.AddDbContext<TaskContext>(options =>
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("TaskConnection")));
 
 var app = builder.Build();
 

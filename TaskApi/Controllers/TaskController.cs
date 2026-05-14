@@ -1,33 +1,79 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using TaskApi.Models;
 
 namespace TaskApi.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class TasksController : Controller
+public class TasksController(TaskContext db) : Controller
 {
     [HttpGet]
-    public IActionResult Get()
+    public async Task<IActionResult> Get()
     {
-        return Ok("Hello, World!");
+        return await db.Tasks.AnyAsync() ? Ok(db.Tasks.ToList()) : NotFound("No tasks found!");
     }
     
     [HttpPost]
-    public IActionResult Post([FromBody] PostTaskTdo taskTdo)
+    public async Task<IActionResult> Post([FromBody] PostTaskTdo taskTdo)
     {
-        return Ok("Task created! title: " + taskTdo.Title + ", priority: " + taskTdo.Priority );
+        var task = new TaskModel
+        {
+            Id = Guid.NewGuid(),
+            Title = taskTdo.Title,
+            CreatedAt = DateTimeOffset.Now.ToUniversalTime(),
+            Priority = (Priority)taskTdo.Priority,
+            IsCompleted = false
+        };
+        await db.Tasks.AddAsync(task);
+        await db.SaveChangesAsync();
+
+        return Ok(task );
     }
     
     [HttpPut("{id}/complete")]
-    public IActionResult Complete(int id)
+    public async Task<IActionResult> Complete(Guid id)
     {
-        return Ok($"Task {id} marked as completed!");
+        var task = await db.Tasks.FindAsync(id);
+        
+        if (task == null)
+        {
+            return NotFound($"Task with id {id} not found!");
+        }
+        
+        if (task.IsCompleted) 
+        {
+            return BadRequest($"Task with id {id} is already completed!");
+        }
+        
+        task.IsCompleted = true;
+        task.CompletedAt = DateTimeOffset.Now.ToUniversalTime();
+        
+        try
+        {
+            await db.SaveChangesAsync();
+            return Ok(task);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict("Task was already modified");
+        }
     }
     
     [HttpDelete("{id}")]
-    public IActionResult Delete(int id)
+    public async Task<IActionResult> Delete(Guid id)
     {
-        return Ok($"Task {id} deleted!");
+        var task = await db.Tasks.FindAsync(id);
+        
+        if (task == null)
+        {
+            return NotFound($"Task with id {id} not found!");
+        }
+
+        db.Tasks.Remove(task);
+        await db.SaveChangesAsync();
+
+        return Ok(task);
     }
 
     public record PostTaskTdo(string Title, int Priority);
