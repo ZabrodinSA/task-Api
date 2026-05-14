@@ -1,12 +1,15 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskApi.Models;
+using TaskApi.Services;
 
 namespace TaskApi.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class TasksController(TaskContext db) : Controller
+public class TasksController(
+    TaskContext db,
+    RabbitMqService rabbitMqService) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Get()
@@ -52,6 +55,8 @@ public class TasksController(TaskContext db) : Controller
         try
         {
             await db.SaveChangesAsync();
+            await rabbitMqService.PublishTaskCompletedAsync(task);
+
             return Ok(task);
         }
         catch (DbUpdateConcurrencyException)

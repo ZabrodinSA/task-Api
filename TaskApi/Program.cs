@@ -4,6 +4,7 @@ using TaskApi.Controllers;
 using TaskApi.Services.Validators;
 using Microsoft.EntityFrameworkCore;
 using TaskApi.Models;
+using TaskApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,7 +23,13 @@ builder.Services.AddDbContext<TaskContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("TaskConnection")));
 
+builder.Services.AddSingleton<RabbitMqService>();
+
 var app = builder.Build();
+
+// Initialize RabbitMqService
+var rabbitMqService = app.Services.GetRequiredService<RabbitMqService>();
+await rabbitMqService.InitializeAsync();
 
 app.UseHttpsRedirection();
 
