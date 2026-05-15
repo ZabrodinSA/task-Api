@@ -1,17 +1,15 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
-USER $APP_UID
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
+EXPOSE 7025
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["TaskApi/TaskApi.csproj", "TaskApi/"]
-RUN dotnet restore "TaskApi/TaskApi.csproj"
+COPY TaskApi.csproj TaskApi.csproj
+RUN dotnet restore TaskApi.csproj
 COPY . .
-WORKDIR "/src/TaskApi"
-RUN dotnet build "TaskApi.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR /src
+RUN dotnet build TaskApi.csproj -c Release -o /app
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release

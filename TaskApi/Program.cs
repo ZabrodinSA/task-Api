@@ -1,3 +1,4 @@
+using DotNetEnv;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using TaskApi.Controllers;
@@ -6,7 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using TaskApi.Models;
 using TaskApi.Services;
 
+Env.Load("../.env");
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration.AddEnvironmentVariables();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -19,9 +24,18 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddScoped<IValidator<TasksController.PostTaskTdo>, VerifyPostTaskDtoValidator>();
 
 //Add DB contexts
+var dbUsername = builder.Configuration["DB_USERNAME"];
+var dbPassword = builder.Configuration["DB_PASSWORD"];
+var dbHost = builder.Configuration["BD_HOST"];
+
+if (string.IsNullOrEmpty(dbUsername) || string.IsNullOrEmpty(dbPassword) || string.IsNullOrEmpty(dbHost))
+{
+    throw new InvalidOperationException("Database configuration is missing. Please set DB_USERNAME, DB_PASSWORD, and BD_HOST environment variables.");
+}
+
 builder.Services.AddDbContext<TaskContext>(options =>
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("TaskConnection")));
+        options.UseNpgsql(
+            $"Host={dbHost};Port=5432;Database=tasks;Username={dbUsername};Password={dbPassword}"));
 
 builder.Services.AddSingleton<RabbitMqService>();
 
@@ -40,12 +54,13 @@ appLifetime.ApplicationStopping.Register(async () =>
     Console.WriteLine("RabbitMQ resources disposed.");
 });
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 app.UseRouting();
 app.MapControllers();
 
 app.Run();
 
-public partial class Program { }
-
+public partial class Program
+{
+}

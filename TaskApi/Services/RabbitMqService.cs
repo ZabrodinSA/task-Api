@@ -6,7 +6,7 @@ using TaskApi.Models;
 
 namespace TaskApi.Services;
 
-public class RabbitMqService : IAsyncDisposable
+public class RabbitMqService(IConfiguration _configuration): IAsyncDisposable
 {
     private IConnection? _connection;
     private IChannel? _channel;
@@ -17,7 +17,14 @@ public class RabbitMqService : IAsyncDisposable
 
     public async Task InitializeAsync()
     {
-        var factory = new ConnectionFactory { HostName = "localhost" };
+        var host = _configuration["RABBITMQ_HOST"];
+        
+        var factory = new ConnectionFactory
+        {
+            HostName = host,
+            UserName = "guest",
+            Password = "guest"
+        };
         _connection = await factory.CreateConnectionAsync();
         _channel = await _connection.CreateChannelAsync();
 
